@@ -1,12 +1,12 @@
-﻿# group2 - CPO Lab 1 - Variant 2: Dynamic Array
+# group2 - CPO Lab 1 - Variant 2: Dynamic Array
 
 ## Description
 
 This repository contains the first laboratory work for the Computational
 Process Organization course.
 
-The goal is to design, implement, and test a mutable dynamic array in Python.
-The selected variant is Variant 2: Dynamic array.
+The goal is to design, implement, and test a mutable dynamic array in
+Python. The selected variant is Variant 2: Dynamic array.
 
 The data structure is designed as a mutable object. Operations that change
 the structure should modify the current object in place when applicable.
@@ -96,8 +96,9 @@ Planned public API:
 
 ### Mutability
 
-The structure is mutable. Methods such as `add`, `set`, `remove`, `reverse`,
-`from_list`, `filter`, `map`, and `concat` modify the current object in place.
+The structure is mutable. Methods such as `add`, `set`, `remove`,
+`reverse`, `from_list`, `filter`, `map`, and `concat` modify the current
+object in place.
 
 Mutating methods return `self` for convenient chaining, except `remove`,
 which returns the removed value.
@@ -126,7 +127,7 @@ copies existing logical elements into it.
 Negative indexes are not supported. Invalid indexes for `get`, `set`, and
 `remove` raise `IndexError`.
 
-### `None` values
+### None values
 
 `None` is a valid user value. The implementation must not use `None` to
 detect whether a cell is occupied. Logical length defines valid elements.
