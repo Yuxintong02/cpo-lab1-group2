@@ -214,7 +214,6 @@ of each property. This avoids accidental aliasing between mutated objects.
 - Yuxintong and Yinyutong: API design, corner case discussion, CI fixes, and
   final laboratory review preparation.
 
-
 ## Changelog
 
 ### 2026-04-29
