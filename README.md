@@ -5,110 +5,108 @@
 This repository contains the first laboratory work for the Computational
 Process Organization course.
 
-The goal is to design, implement, and test a mutable dynamic array in
-Python. The selected variant is Variant 2: Dynamic array.
+The selected variant is Variant 2: Dynamic array. The project implements a
+mutable dynamic array in Python. The data structure stores values in an
+internal fixed-capacity block and grows this block when more space is needed.
 
-The data structure is designed as a mutable object. Operations that change
-the structure should modify the current object in place when applicable.
-
-The implementation will use a Python built-in list as an internal
-fixed-capacity storage block. When length becomes equal to capacity, the
-array will allocate a larger block, copy existing elements, and add the new
-element.
-
-The implementation must correctly support `None` as a user value.
+The implementation uses a Python built-in list as the internal storage block.
+The logical size is stored separately from the physical capacity. This is
+important because `None` is a valid user value and cannot be used as an
+indicator of an empty slot.
 
 ## Project structure
 
-Planned project files:
+Project files:
 
 - `.github/workflows/check.yml`: GitHub Actions checks.
 - `.gitignore`: ignored temporary and local files.
-- `README.md`: project description and design notes.
+- `README.md`: project description, design notes, and analysis.
 - `requirements.txt`: project dependencies.
-- `dynamic_array.py`: planned dynamic array implementation.
-- `dynamic_array_test.py`: planned tests.
+- `dynamic_array.py`: `DynamicArray` implementation.
+- `dynamic_array_test.py`: unit tests and property-based tests.
 
-The template files `foo.py` and `foo_test.py` will be removed after the
-dynamic array files are added.
+The original template files `foo.py` and `foo_test.py` were removed after the
+dynamic array implementation was added.
 
 ## Features
 
-Planned features:
+Implemented `DynamicArray` features:
 
 - create an empty dynamic array;
 - configure the initial capacity;
 - configure the growth factor;
-- add an element to the end;
-- get an element by index;
-- set an element by index;
-- remove an element by index;
+- add a value to the end of the array;
+- get a value by index;
+- set a value by index;
+- remove a value by index;
 - return the current logical size;
-- check membership;
+- check whether a value is a member of the array;
 - reverse the array in place;
 - load values from a Python list;
-- convert the structure to a Python list;
-- filter elements in place;
-- map elements in place;
-- reduce elements from left to right;
-- iterate over elements without changing the array;
+- convert the dynamic array to a Python list;
+- filter values in place by a predicate;
+- map values in place by a function;
+- reduce values from left to right;
+- iterate over values without modifying the array;
 - create an empty monoid value;
 - concatenate two dynamic arrays.
 
-## API design
+## Public API
 
-Planned public API:
+The implemented public API is:
 
-- `DynamicArray(initial_capacity=1, growth_factor=2)`:
-  create an empty array.
+- `DynamicArray(initial_capacity=1, growth_factor=2.0)`:
+  create an empty dynamic array.
 - `add(value)`:
-  append a value and return `self`.
+  append a value to the end of the array.
 - `get(index)`:
   return the value at the given index.
 - `set(index, value)`:
-  replace a value and return `self`.
+  replace the value at the given index.
 - `remove(index)`:
   remove and return the value at the given index.
 - `size()`:
-  return the logical number of stored elements.
+  return the logical number of stored values.
 - `member(value)`:
   check whether the value is stored in the array.
 - `reverse()`:
-  reverse logical elements in place and return `self`.
+  reverse logical values in place.
 - `from_list(values)`:
-  replace current contents and return `self`.
+  replace current contents with values from a Python list.
 - `to_list()`:
-  return logical elements as a Python list.
+  return logical values as a Python list.
 - `filter(predicate)`:
-  keep matching elements and return `self`.
+  keep only values accepted by the predicate.
 - `map(function)`:
-  replace each element and return `self`.
+  replace each value with the result of the function.
 - `reduce(function, initial_state)`:
-  fold elements from left to right.
+  fold values from left to right.
 - `__iter__()`:
   return a non-destructive iterator.
 - `empty()`:
   return an empty dynamic array.
 - `concat(other)`:
-  append another array and return `self`.
+  append another dynamic array and return `self`.
 
 ## Design notes
 
 ### Mutability
 
-The structure is mutable. Methods such as `add`, `set`, `remove`,
-`reverse`, `from_list`, `filter`, `map`, and `concat` modify the current
-object in place.
+The data structure is mutable. Operations that change the structure modify
+the current object in place. This applies to `add`, `set`, `remove`,
+`reverse`, `from_list`, `filter`, `map`, and `concat`.
 
-Mutating methods return `self` for convenient chaining, except `remove`,
-which returns the removed value.
+The `concat` method is also mutable. It appends values from the right operand
+to the current object and returns `self`. The right operand is not modified.
 
 ### Internal storage
 
-The implementation will use a Python built-in list as an internal storage
-block. The internal capacity may be larger than the logical length.
+The implementation uses a Python built-in list as an internal storage block.
+This block may be larger than the logical number of stored values.
 
-Only indexes in the range `0 <= index < length` are valid.
+Valid user values are determined only by indexes lower than the current
+logical size. Unused internal slots may contain `None`, but this does not
+mean that every `None` value is unused.
 
 ### Capacity growth
 
@@ -119,120 +117,103 @@ Invalid configuration values:
 - `initial_capacity < 1` raises `ValueError`;
 - `growth_factor <= 1` raises `ValueError`.
 
-When `length == capacity`, the array allocates a larger internal block and
-copies existing logical elements into it.
+When the logical size becomes equal to the current capacity, the array
+allocates a larger internal list, copies all logical values to it, and then
+adds the new value.
+
+Capacity grows when needed but does not automatically shrink after `remove`
+or `filter`.
 
 ### Indexing
+
+Only indexes in the range `0 <= index < size()` are valid.
 
 Negative indexes are not supported. Invalid indexes for `get`, `set`, and
 `remove` raise `IndexError`.
 
-### None values
+### `None` values
 
-`None` is a valid user value. The implementation must not use `None` to
-detect whether a cell is occupied. Logical length defines valid elements.
+`None` is allowed as a normal user value. The implementation does not use
+`None` checks to determine whether a value is valid. Logical size is the only
+source of truth for valid indexes.
 
 ### Mixed element types
 
-Mixed element types are allowed. The array stores arbitrary Python objects,
-including integers, strings, booleans, and `None`.
+Mixed element types are allowed. The dynamic array stores arbitrary Python
+objects, including integers, strings, booleans, and `None`.
 
 ### Mapping and filtering
 
-`map` modifies elements in place and may change their types.
+`map` modifies the current array in place and may change element types.
 
-`filter` modifies the current array in place and keeps only elements for
-which the predicate returns `True`.
-
-### Concatenation and monoid behavior
-
-`DynamicArray.empty()` creates an empty dynamic array.
-
-`concat` appends all elements from another dynamic array to the current array
-and returns `self`. The right operand is not modified.
-
-Expected monoid properties:
-
-- left identity: `empty.concat(array)` is equivalent to `array`;
-- right identity: `array.concat(empty)` is equivalent to `array`;
-- associativity: `(a.concat(b)).concat(c)` and `a.concat(b.concat(c))`
-  produce equivalent list contents.
-
-Because `concat` is mutable, tests will use independent copies of arrays.
+`filter` modifies the current array in place and keeps only values for which
+the predicate returns `True`.
 
 ### Iterator behavior
 
-The iterator must be non-destructive. Iterating over an array must not change
-its contents or size.
+The iterator is non-destructive. Iterating over a dynamic array does not
+change its values or size.
 
-## Testing plan
+## Testing
 
-The project will use unit tests and property-based tests.
+The project uses unit tests and property-based tests.
 
 ### Unit tests
 
-Planned unit tests:
+Unit tests cover:
 
-- constructor accepts valid values;
-- constructor rejects `initial_capacity < 1`;
-- constructor rejects `growth_factor <= 1`;
-- an empty array has size zero;
-- `add` appends one element;
-- `add` appends multiple elements in order;
-- `add` expands capacity when needed;
-- `get` returns values by index;
-- `get` rejects invalid indexes;
-- `set` replaces values by index;
-- `set` rejects invalid indexes;
-- `remove` removes and returns values;
-- `remove` shifts following elements left;
-- `remove` rejects invalid indexes;
-- `member` finds existing values;
-- `member` rejects absent values;
-- `reverse` works for empty, one-element, and multi-element arrays;
-- `from_list` replaces previous contents;
-- `to_list` returns logical elements only;
-- `filter` keeps matching values in place;
-- `filter` may produce an empty array;
-- `map` changes values in place;
-- `map` may change element types;
-- `reduce` works with an initial state;
-- iterator returns elements in order;
-- iterator does not modify the array;
-- `empty` creates an empty array;
-- `concat` appends another array;
-- `concat` does not modify the right operand;
-- `None` can be added, retrieved, set, removed, and checked;
-- mixed types are preserved.
+- constructor behavior;
+- invalid `initial_capacity`;
+- invalid `growth_factor`;
+- `size`;
+- `to_list`;
+- `from_list`;
+- `add`;
+- resizing when capacity is full;
+- `get`;
+- `set`;
+- `remove` from the first, middle, and last positions;
+- invalid indexes;
+- `member`;
+- `reverse`;
+- `map`;
+- `filter`;
+- `reduce`;
+- iterator behavior;
+- `empty`;
+- `concat`;
+- `None` values;
+- mixed element types.
 
 ### Property-based tests
 
-Planned property-based tests:
+Property-based tests cover these general properties:
 
-- `from_list(xs).to_list() == xs`;
-- `from_list(xs).size() == len(xs)`;
-- iteration over the array produces `xs`;
-- double reverse restores `xs`;
-- concatenation produces `xs + ys`;
-- empty is a left identity;
-- empty is a right identity;
+- converting from a Python list and back preserves values;
+- dynamic array size equals Python list length;
+- reversing twice restores the original values;
+- concatenation matches Python list addition;
+- empty array is a left identity for concat;
+- empty array is a right identity for concat;
 - concat is associative by resulting list contents;
-- `map(identity)` preserves `xs`;
-- `filter(lambda _: True)` preserves `xs`;
-- `filter(lambda _: False)` produces an empty array;
-- reducing with a counter returns `len(xs)`.
+- mapping identity preserves values;
+- filtering with an always-true predicate preserves values;
+- filtering with an always-false predicate produces an empty array.
 
-Generated test values should include integers, strings, booleans, and `None`.
+Generated mixed values include `None`, integers, strings, and booleans.
+
+Because `concat` is mutable, monoid tests create fresh arrays for each side
+of each property. This avoids accidental aliasing between mutated objects.
 
 ## Contribution
 
-- Alice: planned responsibility for the main implementation, capacity growth
-  logic, and type annotations.
-- Bob: planned responsibility for unit tests, property-based tests, and
-  README maintenance.
+- Yuxintong: project setup, README preparation, implementation workflow,
+  local checks, and GitHub Actions validation.
+- Yinyutong: design review, testing review, documentation review, and final
+  validation support.
+- Yuxintong and Yinyutong: API design, corner case discussion, CI fixes, and
+  final laboratory review preparation.
 
-The final contribution section must stay consistent with the real Git history
-and should be updated before submission.
 
 ## Changelog
 
@@ -243,20 +224,37 @@ and should be updated before submission.
 - Installed runtime and development dependencies.
 - Verified that the template tests pass locally.
 - Drafted the initial README.
-- Defined the planned `DynamicArray` API contract.
+- Defined the `DynamicArray` API contract.
 - Defined boundary behavior and testing strategy.
 - Fixed README formatting for markdown linting.
+- Implemented the mutable `DynamicArray`.
+- Removed template files `foo.py` and `foo_test.py`.
+- Added unit tests for all required operations.
+- Fixed style and type-checking issues.
+- Added property-based tests with Hypothesis.
+- Updated documentation for the final Lab 1 state.
 
 ## Analysis and conclusion
 
-This project will implement a mutable dynamic array with explicit capacity
-management. The main implementation risk is confusing logical length with
-physical capacity, especially because `None` is a valid user value.
+The project implements a mutable dynamic array with explicit capacity
+management. The main design restriction is that the implementation uses a
+Python built-in list internally. This is acceptable for the variant because
+the built-in list is used as a fixed-capacity storage block rather than as the
+public data structure.
 
-Unit tests will check specific corner cases, such as invalid indexes,
-capacity expansion, and `None` handling. Property-based tests will check
-general invariants, such as list conversion consistency, size consistency,
-monoid identity, and monoid associativity.
+Another restriction is that capacity does not shrink automatically after
+removal or filtering. This keeps the implementation simpler and avoids extra
+copying, but it may keep more allocated internal space than necessary.
 
-At this stage, the project is prepared but the full implementation has not
-started yet.
+Unit tests are useful for checking concrete examples and specific corner
+cases. They make it easy to verify invalid indexes, invalid constructor
+arguments, removing from different positions, `None` handling, and resizing.
+
+The disadvantage of unit tests is that they only check the examples that were
+written manually. They may miss unexpected combinations of values or operation
+sequences.
+
+Property-based tests are useful for checking general invariants over many
+generated inputs. In this project, they verify conversion consistency, size
+consistency, double reverse, concat behavior, monoid identity, monoid
+associativity, identity mapping, and filtering behavior.

@@ -1,6 +1,8 @@
 from typing import Any, cast
 
 import pytest
+import hypothesis.strategies as st
+from hypothesis import given
 
 from dynamic_array import DynamicArray
 
@@ -333,3 +335,139 @@ def test_mixed_element_types_are_allowed() -> None:
     assert array.get(1) == "two"
     assert array.get(2) is None
     assert array.get(3) is True
+
+
+MIXED_VALUES = st.one_of(
+    st.none(),
+    st.integers(min_value=-1000, max_value=1000),
+    st.text(max_size=20),
+    st.booleans(),
+)
+
+MIXED_LISTS = st.lists(MIXED_VALUES, max_size=30)
+
+
+def make_array(values: list[object]) -> DynamicArray:
+    array = DynamicArray()
+    array.from_list(values)
+    return array
+
+
+@given(MIXED_LISTS)
+def test_pbt_from_list_to_list_equality(values: list[object]) -> None:
+    array = make_array(values)
+
+    assert array.to_list() == values
+
+
+@given(MIXED_LISTS)
+def test_pbt_size_equals_python_list_length(values: list[object]) -> None:
+    array = make_array(values)
+
+    assert array.size() == len(values)
+
+
+@given(MIXED_LISTS)
+def test_pbt_reverse_twice_restores_values(values: list[object]) -> None:
+    array = make_array(values)
+
+    array.reverse()
+    array.reverse()
+
+    assert array.to_list() == values
+
+
+@given(MIXED_LISTS, MIXED_LISTS)
+def test_pbt_concat_matches_python_list_addition(
+    left_values: list[object],
+    right_values: list[object],
+) -> None:
+    left = make_array(left_values)
+    right = make_array(right_values)
+
+    result = left.concat(right)
+
+    assert result is left
+    assert left.to_list() == left_values + right_values
+    assert right.to_list() == right_values
+
+
+@given(MIXED_LISTS)
+def test_pbt_monoid_left_identity(values: list[object]) -> None:
+    empty = DynamicArray.empty()
+    array = make_array(values)
+
+    result = empty.concat(array)
+
+    assert result is empty
+    assert empty.to_list() == values
+    assert array.to_list() == values
+
+
+@given(MIXED_LISTS)
+def test_pbt_monoid_right_identity(values: list[object]) -> None:
+    array = make_array(values)
+    empty = DynamicArray.empty()
+
+    result = array.concat(empty)
+
+    assert result is array
+    assert array.to_list() == values
+    assert empty.to_list() == []
+
+
+@given(MIXED_LISTS, MIXED_LISTS, MIXED_LISTS)
+def test_pbt_monoid_associativity(
+    first_values: list[object],
+    second_values: list[object],
+    third_values: list[object],
+) -> None:
+    left_first = make_array(first_values)
+    left_second = make_array(second_values)
+    left_third = make_array(third_values)
+
+    right_first = make_array(first_values)
+    right_second = make_array(second_values)
+    right_third = make_array(third_values)
+
+    left_result = left_first.concat(left_second).concat(left_third)
+
+    right_tail = right_second.concat(right_third)
+    right_result = right_first.concat(right_tail)
+
+    expected = first_values + second_values + third_values
+
+    assert left_result.to_list() == expected
+    assert right_result.to_list() == expected
+
+
+@given(MIXED_LISTS)
+def test_pbt_map_identity_preserves_values(values: list[object]) -> None:
+    array = make_array(values)
+
+    array.map(lambda value: value)
+
+    assert array.to_list() == values
+
+
+@given(MIXED_LISTS)
+def test_pbt_filter_always_true_preserves_values(
+    values: list[object],
+) -> None:
+    array = make_array(values)
+
+    array.filter(lambda value: True)
+
+    assert array.to_list() == values
+
+
+@given(MIXED_LISTS)
+def test_pbt_filter_always_false_removes_all_values(
+    values: list[object],
+) -> None:
+    array = make_array(values)
+
+    array.filter(lambda value: False)
+
+    assert array.to_list() == []
+    assert array.size() == 0
