@@ -1,7 +1,16 @@
-from typing import Any, Callable, Iterator
+from __future__ import annotations
+
+from typing import Any, Callable, Generator, Generic, Iterable, TypeVar, cast
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+_EMPTY = object()
 
 
-class DynamicArray:
+class DynamicArray(Generic[T]):
+    """A mutable dynamic array with manual capacity management."""
+
     def __init__(
         self,
         initial_capacity: int = 1,
@@ -15,32 +24,38 @@ class DynamicArray:
         self._capacity = initial_capacity
         self._growth_factor = growth_factor
         self._length = 0
-        self._data: list[object] = [None] * self._capacity
+        self._data: list[object] = [_EMPTY] * self._capacity
 
-    def add(self, value: object) -> None:
+    def __eq__(self, other: object) -> bool:
+        """Compare arrays by logical contents, not by internal capacity."""
+        if not isinstance(other, DynamicArray):
+            return False
+        return self.to_list() == other.to_list()
+
+    def add(self, value: T) -> None:
         if self._length == self._capacity:
             self._resize()
 
         self._data[self._length] = value
         self._length += 1
 
-    def get(self, index: int) -> object:
+    def get(self, index: int) -> T:
         self._check_index(index)
-        return self._data[index]
+        return self._value_at(index)
 
-    def set(self, index: int, value: object) -> None:
+    def set(self, index: int, value: T) -> None:
         self._check_index(index)
         self._data[index] = value
 
-    def remove(self, index: int) -> object:
+    def remove(self, index: int) -> T:
         self._check_index(index)
-        removed = self._data[index]
+        removed = self._value_at(index)
 
         for current in range(index, self._length - 1):
             self._data[current] = self._data[current + 1]
 
         self._length -= 1
-        self._data[self._length] = None
+        self._data[self._length] = _EMPTY
         return removed
 
     def size(self) -> int:
@@ -48,7 +63,7 @@ class DynamicArray:
 
     def member(self, value: object) -> bool:
         for index in range(self._length):
-            if self._data[index] == value:
+            if self._value_at(index) == value:
                 return True
         return False
 
@@ -64,56 +79,64 @@ class DynamicArray:
             left += 1
             right -= 1
 
-    def from_list(self, values: list[object]) -> None:
-        self._capacity = max(1, len(values))
-        self._data = [None] * self._capacity
-        self._length = len(values)
+    def from_list(self, values: Iterable[T]) -> None:
+        items = list(values)
+        self._capacity = max(1, len(items))
+        self._data = [_EMPTY] * self._capacity
+        self._length = len(items)
 
-        for index, value in enumerate(values):
+        for index, value in enumerate(items):
             self._data[index] = value
 
-    def to_list(self) -> list[object]:
-        return [self._data[index] for index in range(self._length)]
+    def to_list(self) -> list[T]:
+        return [self._value_at(index) for index in range(self._length)]
 
-    def filter(self, predicate: Callable[[object], bool]) -> None:
+    def filter(self, predicate: Callable[[T], bool]) -> None:
         write_index = 0
 
         for read_index in range(self._length):
-            value = self._data[read_index]
+            value = self._value_at(read_index)
             if predicate(value):
                 self._data[write_index] = value
                 write_index += 1
 
         for index in range(write_index, self._length):
-            self._data[index] = None
+            self._data[index] = _EMPTY
 
         self._length = write_index
 
-    def map(self, function: Callable[[object], object]) -> None:
+    def map(self, function: Callable[[T], Any]) -> None:
         for index in range(self._length):
-            self._data[index] = function(self._data[index])
+            self._data[index] = function(self._value_at(index))
 
     def reduce(
         self,
-        function: Callable[[Any, object], Any],
-        initial_state: Any,
-    ) -> Any:
+        function: Callable[[S, T], S],
+        initial_state: S,
+    ) -> S:
         state = initial_state
 
         for index in range(self._length):
-            state = function(state, self._data[index])
+            state = function(state, self._value_at(index))
 
         return state
 
-    def __iter__(self) -> Iterator[object]:
+    def values(self) -> Generator[T, None, None]:
+        """Generate logical array values in order.
+
+        Empty internal slots are not exposed.
+        """
         for index in range(self._length):
-            yield self._data[index]
+            yield self._value_at(index)
+
+    def __iter__(self) -> Generator[T, None, None]:
+        return self.values()
 
     @classmethod
-    def empty(cls) -> "DynamicArray":
+    def empty(cls) -> DynamicArray[T]:
         return cls()
 
-    def concat(self, other: "DynamicArray") -> "DynamicArray":
+    def concat(self, other: DynamicArray[T]) -> DynamicArray[T]:
         if not isinstance(other, DynamicArray):
             raise TypeError("other must be a DynamicArray")
 
@@ -125,8 +148,7 @@ class DynamicArray:
     def _resize(self) -> None:
         new_capacity = int(self._capacity * self._growth_factor)
         new_capacity = max(self._capacity + 1, new_capacity)
-
-        new_data: list[object] = [None] * new_capacity
+        new_data: list[object] = [_EMPTY] * new_capacity
 
         for index in range(self._length):
             new_data[index] = self._data[index]
@@ -137,3 +159,6 @@ class DynamicArray:
     def _check_index(self, index: int) -> None:
         if index < 0 or index >= self._length:
             raise IndexError("index out of range")
+
+    def _value_at(self, index: int) -> T:
+        return cast(T, self._data[index])
